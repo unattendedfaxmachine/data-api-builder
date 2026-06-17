@@ -32,5 +32,5 @@ Repository Identity: unattendedfaxmachine/data-api-builder@fbe7f3a3e5417a16e0427
 Execution Binding: current-checkout:pg-create-policy:feature/pg_create_policy
 
 ## Status
-Current Stage: Initialization complete
-Next Activity: paw-spec
+Current Stage: Specification approved (milestone)
+Next Activity: paw-code-research
