@@ -27,6 +27,7 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using Npgsql;
 
 namespace Azure.DataApiBuilder.Service.Tests.UnitTests
 {
@@ -267,6 +268,55 @@ namespace Azure.DataApiBuilder.Service.Tests.UnitTests
             Assert.AreEqual(parametersList[1].Value, "Ramen");
             Assert.AreEqual(parametersList[1].DbType, DbType.String);
             Assert.AreEqual(parametersList[1].SqlDbType, SqlDbType.NVarChar);
+        }
+
+        /// <summary>
+        /// Test to validate that PostgreSQL DbCommand parameters are correctly populated with provided DbType metadata.
+        /// This is especially important for typed null parameters.
+        /// </summary>
+        [TestMethod, TestCategory(TestCategory.POSTGRESQL)]
+        public void Test_PostgreSql_DbCommandParameter_PopulatedWithCorrectDbTypes()
+        {
+            RuntimeConfig mockConfig = new(
+               Schema: "",
+               DataSource: new(DatabaseType.PostgreSQL, "Host=localhost;Database=testdb;Username=test;Password=test;", new()),
+               Runtime: new(
+                   Rest: new(),
+                   GraphQL: new(),
+                   Mcp: new(),
+                   Host: new(null, null)
+               ),
+               Entities: new(new Dictionary<string, Entity>())
+           );
+
+            MockFileSystem fileSystem = new();
+            fileSystem.AddFile(FileSystemRuntimeConfigLoader.DEFAULT_CONFIG_FILE_NAME, new MockFileData(mockConfig.ToJson()));
+            FileSystemRuntimeConfigLoader loader = new(fileSystem);
+            RuntimeConfigProvider provider = new(loader);
+
+            Mock<ILogger<IQueryExecutor>> queryExecutorLogger = new();
+            Mock<IHttpContextAccessor> httpContextAccessor = new();
+            DbExceptionParser dbExceptionParser = new PostgreSqlDbExceptionParser(provider);
+
+            PostgreSqlQueryExecutor postgresQueryExecutor = new(provider, dbExceptionParser, queryExecutorLogger.Object, httpContextAccessor.Object);
+            IDictionary<string, DbConnectionParam> parameters = new Dictionary<string, DbConnectionParam>
+            {
+                { "@param1", new DbConnectionParam(null, DbType.Int32) },
+                { "@param2", new DbConnectionParam("hello", DbType.String) }
+            };
+
+            DbCommand dbCommand = postgresQueryExecutor.PrepareDbCommand(
+                new NpgsqlConnection(),
+                "SELECT 1",
+                parameters,
+                null,
+                provider.GetConfig().DefaultDataSourceName);
+
+            List<NpgsqlParameter> parametersList = dbCommand.Parameters.OfType<NpgsqlParameter>().ToList();
+            Assert.AreEqual(DBNull.Value, parametersList[0].Value);
+            Assert.AreEqual(DbType.Int32, parametersList[0].DbType);
+            Assert.AreEqual("hello", parametersList[1].Value);
+            Assert.AreEqual(DbType.String, parametersList[1].DbType);
         }
 
         /// <summary>

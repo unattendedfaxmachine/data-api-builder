@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+using System.Data;
 using System.Data.Common;
 using Azure.Core;
 using Azure.DataApiBuilder.Config;
@@ -137,6 +138,15 @@ namespace Azure.DataApiBuilder.Core.Resolvers
             }
         }
 
+        /// <inheritdoc />
+        public override void PopulateDbTypeForParameter(KeyValuePair<string, DbConnectionParam> parameterEntry, DbParameter parameter)
+        {
+            if (parameterEntry.Value?.DbType is not null)
+            {
+                parameter.DbType = (DbType)parameterEntry.Value.DbType;
+            }
+        }
+
         /// <summary>
         /// Determines if managed identity access should be attempted or not.
         /// It should only be attempted if the password is not provided
@@ -205,6 +215,15 @@ namespace Azure.DataApiBuilder.Core.Resolvers
             }
 
             return _defaultAccessToken?.Token;
+        }
+
+        /// <inheritdoc/>
+        public override void PopulateDbTypeForParameter(KeyValuePair<string, DbConnectionParam> parameterEntry, DbParameter parameter)
+        {
+            if (parameterEntry.Value?.DbType is not null)
+            {
+                parameter.DbType = (System.Data.DbType)parameterEntry.Value.DbType;
+            }
         }
     }
 }
