@@ -134,6 +134,72 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.GraphQLMutationTests
             await base.InsertMutationWithDefaultBuiltInFunctions(postgresQuery);
         }
 
+    /// <summary>
+    /// <code>Do: </code> Inserts new Publisher with name = 'New publisher'
+    /// <code>Check: </code> Mutation fails because the database policy (@item.name ne 'New publisher') prohibits insertion.
+    /// </summary>
+    [TestMethod]
+    public async Task InsertMutationFailingDatabasePolicy()
+    {
+      string errorMessage = "Could not insert row with given values for entity: Publisher";
+      string postgresQuery = @"
+        SELECT to_jsonb(subq) AS DATA
+        FROM
+          (SELECT COUNT(*) AS COUNT
+           FROM publishers
+           WHERE name = 'New publisher') AS subq
+      ";
+
+      string graphQLMutationName = "createPublisher";
+      string graphQLMutationPayload = @"
+        mutation {
+          createPublisher(item: { name: ""New publisher"" }) {
+            id
+            name
+          }
+        }
+      ";
+
+      await InsertMutationFailingDatabasePolicy(
+        dbQuery: postgresQuery,
+        errorMessage: errorMessage,
+        roleName: "database_policy_tester",
+        graphQLMutationName: graphQLMutationName,
+        graphQLMutationPayload: graphQLMutationPayload);
+    }
+
+    /// <summary>
+    /// <code>Do: </code> Inserts new Publisher with name = 'Not New publisher'
+    /// <code>Check: </code> Mutation succeeds because the database policy is satisfied.
+    /// </summary>
+    [TestMethod]
+    public async Task InsertMutationWithDatabasePolicy()
+    {
+      string postgresQuery = @"
+        SELECT to_jsonb(subq) AS DATA
+        FROM
+          (SELECT COUNT(*) AS COUNT
+           FROM publishers
+           WHERE name = 'Not New publisher') AS subq
+      ";
+
+      string graphQLMutationName = "createPublisher";
+      string graphQLMutationPayload = @"
+        mutation {
+          createPublisher(item: { name: ""Not New publisher"" }) {
+            id
+            name
+          }
+        }
+      ";
+
+      await InsertMutationWithDatabasePolicy(
+        dbQuery: postgresQuery,
+        roleName: "database_policy_tester",
+        graphQLMutationName: graphQLMutationName,
+        graphQLMutationPayload: graphQLMutationPayload);
+    }
+
         /// <summary>
         /// <code>Do: </code> Inserts new book using variables to set its title and publisher_id
         /// <code>Check: </code> If book with the expected values of the new book is present in the database and
@@ -705,11 +771,10 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.GraphQLMutationTests
         }
 
         [TestMethod]
-        [Ignore]
         /// <inheritdoc/>
-        public override Task TestDbPolicyForCreateOperationReferencingFieldAbsentInRequest()
+        public override async Task TestDbPolicyForCreateOperationReferencingFieldAbsentInRequest()
         {
-            throw new NotImplementedException();
+          await base.TestDbPolicyForCreateOperationReferencingFieldAbsentInRequest();
         }
         #endregion
     }

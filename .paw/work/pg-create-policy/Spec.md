@@ -52,6 +52,7 @@ Acceptance Scenarios:
 - FR-005: The system SHALL preserve expected create behavior for default-value inserts and policy baseline-allow cases. (Stories: P1)
 - FR-006: The system SHALL process authorized PostgreSQL creates with nullable/type-sensitive inputs without introducing new runtime type-inference failures. (Stories: P2)
 - FR-007: Configuration validation for create-action database policy SHALL align with supported PostgreSQL runtime behavior. (Stories: P1)
+- FR-008: Configuration validation semantics for supported PostgreSQL create-action database policy SHALL be defined and enforced consistently across development and production host modes. (Stories: P1)
 
 ### Key Entities
 - Create-action database policy: Authorization predicate that governs whether a create operation is allowed.
@@ -69,18 +70,18 @@ Acceptance Scenarios:
 - SC-003: REST and GraphQL produce matching policy pass/fail outcomes for equivalent PostgreSQL create scenarios. (FR-004)
 - SC-004: Default-value and baseline-allow create scenarios continue to pass with no behavioral regression. (FR-005)
 - SC-005: Nullable/type-sensitive authorized create scenarios complete without newly introduced runtime type-inference failures. (FR-006)
-- SC-006: Validation behavior accepts supported PostgreSQL create-policy configurations and rejects unsupported combinations consistently with runtime support guarantees. (FR-007)
+- SC-006: Validation behavior accepts supported PostgreSQL create-policy configurations and rejects unsupported combinations consistently with runtime support guarantees in both development and production host modes. (FR-007, FR-008)
 
 ## Assumptions
 - Existing tests and runtime patterns already define standard database-policy failure behavior.
-- PostgreSQL create-policy support is intended for the same deployment modes where PostgreSQL create operations are currently supported.
+- PostgreSQL create-policy support uses uniform configuration validation semantics across development and production host modes.
 - Existing entity permission modeling remains unchanged; this work updates enforcement consistency rather than policy syntax design.
 
 ## Scope
 In Scope:
 - PostgreSQL runtime enforcement of create-action database policy during create operations.
 - Behavior consistency verification across REST and GraphQL create paths.
-- Handling of nullable/type-sensitive create inputs required by policy-enforced flow.
+- Validation-first handling of nullable/type-sensitive create inputs required by policy-enforced flow, with implementation changes applied only when evidence confirms they are needed.
 - Validation-rule alignment with supported PostgreSQL create-policy runtime behavior.
 - Regression coverage for policy pass/fail and unauthorized row-insertion prevention.
 
@@ -88,7 +89,7 @@ Out of Scope:
 - New policy language/features beyond existing create-action database policy semantics.
 - Redesign of non-PostgreSQL engine policy behavior.
 - Broad authorization model changes outside create-operation enforcement.
-- Non-create operations (read/update/delete) behavior changes.
+- Intentional behavior changes to non-create operations (read/update/delete) beyond incidental shared-path maintenance required to safely enforce create-policy behavior.
 
 ## Dependencies
 - Existing authorization policy evaluation semantics and failure mapping.

@@ -13,10 +13,10 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 
 ## Desired End State
 - PostgreSQL create operations enforce configured create-action DB policy at runtime.
-- Policy-fail creates return standard database-policy failure behavior and persist no unauthorized row.
+- Policy-fail creates return standard database-policy failure behavior and persist no unauthorized row, including explicit empty-result-to-policy-failure mapping parity where required.
 - Policy-pass creates succeed for REST and GraphQL with behavior parity.
 - Null/type-sensitive payloads in authorized creates are handled without newly introduced runtime type-inference failures.
-- Validation semantics for PostgreSQL create-policy align with implemented runtime support.
+- Validation semantics for PostgreSQL create-policy align with implemented runtime support and are enforced consistently across development and production host modes.
 - Regression coverage is in place for policy pass/fail, missing policy-fields in body, and representative null/type-sensitive inputs.
 
 ## What We're NOT Doing
@@ -33,7 +33,7 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 - [ ] **Phase 5: Documentation** - Produce Docs.md and update project docs if warranted.
 
 ## Phase Candidates
-- [ ] Extended coverage for multi-create or linking-specific create-policy scenarios if gaps are discovered during implementation.
+- [ ] Additional stress/perf coverage for multi-create or linking-specific create-policy scenarios beyond baseline functional verification.
 - [ ] Broader host-mode validation behavior clarification tests if ambiguity remains after Phase 3.
 
 ---
@@ -44,18 +44,21 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 - **src/Core/Resolvers/PostgresQueryBuilder.cs**: Update insert build path to retrieve create-operation DB policy and apply enforcement query shape equivalent to existing SQL-engine policy pattern for non-baseline policies while preserving baseline path.
 - **src/Core/Resolvers/PostgresQueryBuilder.cs**: Ensure default-values insert path remains valid and policy-aware where applicable.
 - **src/Core/Resolvers/PostgresQueryBuilder.cs**: Preserve expected `RETURNING` behavior for create responses.
+- **src/Core/Resolvers/SqlMutationEngine.cs**: Verify create-path empty-result handling for PostgreSQL policy-fail outcomes and align behavior to standard `DatabasePolicyFailure` semantics in FR-002.
 - **src/Service.Tests/SqlTests/RestApiTests/Insert/PostgreSqlInsertApiTests.cs**: Enable or add PostgreSQL REST create-policy pass/fail coverage tied to insert enforcement behavior.
 - **src/Service.Tests/SqlTests/GraphQLMutationTests/PostgreSqlGraphQLMutationTests.cs**: Enable or add PostgreSQL GraphQL create-policy pass/fail coverage tied to create enforcement behavior.
 
 ### Evidence Mapping:
 - PostgreSQL create path currently lacks create-policy predicate integration: `CodeResearch.md` findings citing `src/Core/Resolvers/PostgresQueryBuilder.cs:68-81`.
 - Existing enforcement pattern for parity: `CodeResearch.md` findings citing `src/Core/Resolvers/MsSqlQueryBuilder.cs:81-90` and `src/Core/Resolvers/DWSqlQueryBuilder.cs:388-396`.
+- Create-path policy-failure handling is implemented in mutation engine create flows: `src/Core/Resolvers/SqlMutationEngine.cs:1032` and `src/Core/Resolvers/SqlMutationEngine.cs:1526`.
 
 ### Success Criteria:
 
 #### Automated Verification:
 - [ ] Tests pass: `dotnet test --filter "TestCategory=PostgreSql"`
 - [ ] Build passes: `dotnet build src/Azure.DataApiBuilder.sln`
+- [ ] Targeted tests/assertions validate that policy-fail creates surface standard `DatabasePolicyFailure` behavior for PostgreSQL.
 
 #### Manual Verification:
 - [ ] Policy-fail PostgreSQL create attempts are rejected with expected policy-failure behavior.
@@ -67,7 +70,8 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 ## Phase 2: PostgreSQL Parameter Typing Stability
 
 ### Changes Required:
-- **src/Core/Resolvers/PostgreSqlExecutor.cs** and/or **src/Core/Resolvers/QueryExecutor.cs**: Introduce PostgreSQL-safe parameter type population behavior where metadata is available, with emphasis on null/type-sensitive values used in create-policy-enforced inserts.
+- **Validation-first scope**: Add a targeted validation step to confirm whether nullable/type-sensitive failures reproduce for PostgreSQL under create-policy rewrite query shape.
+- **src/Core/Resolvers/PostgreSqlExecutor.cs** (preferred) and only if required, **src/Core/Resolvers/QueryExecutor.cs**: Introduce PostgreSQL-safe parameter type population behavior where metadata is available, with emphasis on null/type-sensitive values used in create-policy-enforced inserts.
 - **src/Core/Models/DbConnectionParam.cs** and related usage sites (if needed): Preserve existing metadata contract while ensuring provider-specific consumption is reliable.
 - **src/Service.Tests/SqlTests/RestApiTests/Insert/PostgreSqlInsertApiTests.cs**: Add targeted REST create tests with nullable/type-sensitive fields under policy-enforced create path.
 - **src/Service.Tests/SqlTests/GraphQLMutationTests/PostgreSqlGraphQLMutationTests.cs**: Add targeted GraphQL create tests with nullable/type-sensitive fields under policy-enforced create path.
@@ -81,6 +85,7 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 #### Automated Verification:
 - [ ] Tests pass: `dotnet test --filter "TestCategory=PostgreSql"`
 - [ ] Format check passes: `dotnet format src/Azure.DataApiBuilder.sln --verify-no-changes`
+- [ ] Validation artifacts/tests document whether null/type-sensitive failure is reproducible pre-fix and resolved post-fix (or not reproducible, with no implementation change).
 
 #### Manual Verification:
 - [ ] Authorized PostgreSQL creates with nullable numeric/text/date fields complete without newly introduced type-inference failures.
@@ -92,7 +97,8 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 
 ### Changes Required:
 - **src/Core/Configurations/RuntimeConfigValidator.cs**: Update supported-database gating for create-action DB policy to include PostgreSQL once runtime support is in place.
-- **src/Core/Configurations/RuntimeConfigValidator.cs**: Ensure action-specific database policy validation logic aligns with intended PostgreSQL support behavior.
+- **Decision**: Enforce create-policy validation semantics consistently across development and production host modes for supported PostgreSQL create-policy scenarios.
+- **src/Core/Configurations/RuntimeConfigValidator.cs** and initialization call paths: Ensure action-specific database policy validation logic aligns with intended PostgreSQL support behavior without mode-dependent acceptance ambiguity.
 - **src/Service.Tests/UnitTests/ConfigValidationUnitTests.cs**: Update/add tests for accepted/rejected create-policy configs across supported/unsupported engines.
 - **Host-mode verification matrix (development and production)**:
 - **src/Service.Tests/UnitTests/ConfigValidationUnitTests.cs** or equivalent configuration-validation test surface: Add explicit tests that validate behavior under development mode and production mode for PostgreSQL create-policy configs.
@@ -111,7 +117,7 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 #### Manual Verification:
 - [ ] PostgreSQL create-policy configs are accepted when runtime support is enabled by this feature.
 - [ ] Unsupported create-policy combinations continue to fail validation with clear error behavior.
-- [ ] Development-mode and production-mode behavior is explicitly verified against FR-007/SC-006 expectations with no unresolved mode-dependent ambiguity.
+- [ ] Development-mode and production-mode behavior is explicitly verified against FR-007/SC-006/FR-008 expectations with no unresolved mode-dependent ambiguity.
 
 ---
 
@@ -123,6 +129,7 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 - **src/Service.Tests/SqlTests/RestApiTests/Insert/InsertApiTestBase.cs** and **src/Service.Tests/SqlTests/GraphQLMutationTests/GraphQLMutationTestBase.cs**: Reuse existing policy pass/fail helpers and extend only if needed for PostgreSQL-specific edge cases.
 - **src/Service.Tests/SqlTests/RestApiTests/Insert/InsertApiTestBase.cs**: Reuse/extend base assertions for PostgreSQL cross-user unauthorized create prevention and missing policy-field handling.
 - **src/Service.Tests/SqlTests/GraphQLMutationTests/GraphQLMutationTestBase.cs**: Reuse/extend base assertions for PostgreSQL GraphQL create policy pass/fail parity.
+- **Multi-create/linking support determination**: Add explicit verification task for whether PostgreSQL multi-create/linking create paths are supported and affected by create-policy enforcement, and add baseline functional checks for supported paths.
 
 ### Evidence Mapping:
 - PostgreSQL create-policy tests currently ignored/unimplemented: `CodeResearch.md` findings citing `src/Service.Tests/SqlTests/RestApiTests/Insert/PostgreSqlInsertApiTests.cs:344-351` and `src/Service.Tests/SqlTests/GraphQLMutationTests/PostgreSqlGraphQLMutationTests.cs:710`.
@@ -133,10 +140,17 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 #### Automated Verification:
 - [ ] Tests pass: `dotnet test --filter "TestCategory=PostgreSql"`
 - [ ] Targeted REST/GraphQL create-policy suites pass without ignored critical scenarios.
+- [ ] Automated assertions verify policy-fail scenarios persist zero unauthorized rows (SC-001) for covered REST/GraphQL PostgreSQL create-policy tests.
+- [ ] Automated checks document multi-create/linking support outcome (supported with tests, or explicitly documented as not supported).
 
 #### Manual Verification:
 - [ ] Cross-user unauthorized create scenario is reproducibly blocked.
 - [ ] REST and GraphQL produce consistent pass/fail policy outcomes for equivalent create scenarios.
+
+### Phase Entry/Exit Clarification
+
+- **Phase 1 exit**: Runtime enforcement path and standard policy-failure mapping behavior are functionally validated.
+- **Phase 4 exit**: Regression matrix is complete (REST/GraphQL parity, zero-persistence assertions, and multi-create/linking support determination).
 
 ---
 

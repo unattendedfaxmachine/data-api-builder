@@ -340,17 +340,15 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.RestApiTests.Insert
         #region Tests for features yet to be implemented
 
         [TestMethod]
-        [Ignore]
-        public override Task InsertOneFailingDatabasePolicy()
+        public override async Task InsertOneFailingDatabasePolicy()
         {
-            throw new NotImplementedException();
+            await base.InsertOneFailingDatabasePolicy();
         }
 
         [TestMethod]
-        [Ignore]
-        public override Task InsertOneInTableWithFieldsInDbPolicyNotPresentInBody()
+        public override async Task InsertOneInTableWithFieldsInDbPolicyNotPresentInBody()
         {
-            throw new NotImplementedException();
+            await base.InsertOneInTableWithFieldsInDbPolicyNotPresentInBody();
         }
         #endregion
 

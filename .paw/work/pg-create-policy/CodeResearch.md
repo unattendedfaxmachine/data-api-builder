@@ -145,6 +145,6 @@ Where in the current DAB codebase are create-action database policies enforced (
 
 ## Open Questions
 
-- Should create-policy config validation be enforced uniformly independent of host mode, or intentionally remain development-mode metadata validation only (current mode-gated behavior: `src/Core/Configurations/RuntimeConfigValidator.cs:1918`)?
+- Host-mode validation semantics were later decided in planning artifacts to be consistent across development and production modes; implementation details remain to be validated against current mode-gated behavior (`src/Core/Configurations/RuntimeConfigValidator.cs:1918`).
 - For PostgreSQL create-policy query rewriting, should null parameter typing rely on provider inference or explicit type assignment (current generic no-op typing path: `src/Core/Resolvers/QueryExecutor.cs:424`)?
 - Should PostgreSQL test coverage parity include both REST and GraphQL create-policy scenarios by un-ignoring existing subclass overrides (`src/Service.Tests/SqlTests/RestApiTests/Insert/PostgreSqlInsertApiTests.cs:344`, `src/Service.Tests/SqlTests/GraphQLMutationTests/PostgreSqlGraphQLMutationTests.cs:710`)?
