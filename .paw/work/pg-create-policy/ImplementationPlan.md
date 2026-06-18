@@ -26,15 +26,15 @@ This plan implements runtime create-policy enforcement for PostgreSQL create ope
 - Broad re-architecture of mutation execution or authorization subsystems.
 
 ## Phase Status
-- [ ] **Phase 1: PostgreSQL Create Policy SQL Enforcement** - Apply create-policy predicate in PostgreSQL insert query generation.
-- [ ] **Phase 2: PostgreSQL Parameter Typing Stability** - Improve PostgreSQL parameter typing behavior for null/type-sensitive create-policy flows.
-- [ ] **Phase 3: Validation Semantics Alignment** - Align create-policy validation rules with PostgreSQL runtime support.
-- [ ] **Phase 4: PostgreSQL Policy Regression Coverage** - Add/enable REST and GraphQL tests for create-policy pass/fail and edge cases.
-- [ ] **Phase 5: Documentation** - Produce Docs.md and update project docs if warranted.
+- [x] **Phase 1: PostgreSQL Create Policy SQL Enforcement** - Apply create-policy predicate in PostgreSQL insert query generation.
+- [x] **Phase 2: PostgreSQL Parameter Typing Stability** - Improve PostgreSQL parameter typing behavior for null/type-sensitive create-policy flows.
+- [x] **Phase 3: Validation Semantics Alignment** - Align create-policy validation rules with PostgreSQL runtime support.
+- [x] **Phase 4: PostgreSQL Policy Regression Coverage** - Add/enable REST and GraphQL tests for create-policy pass/fail and edge cases.
+- [x] **Phase 5: Documentation** - Produce Docs.md and update project docs if warranted.
 
 ## Phase Candidates
-- [ ] Additional stress/perf coverage for multi-create or linking-specific create-policy scenarios beyond baseline functional verification.
-- [ ] Broader host-mode validation behavior clarification tests if ambiguity remains after Phase 3.
+- [x] Additional stress/perf coverage for multi-create or linking-specific create-policy scenarios beyond baseline functional verification. (Deferred to follow-up; not required for baseline acceptance.)
+- [x] Broader host-mode validation behavior clarification tests if ambiguity remains after Phase 3. (Resolved by host-mode parity coverage in config validation tests.)
 
 ---
 
