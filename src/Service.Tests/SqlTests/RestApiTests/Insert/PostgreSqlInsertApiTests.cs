@@ -221,7 +221,7 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.RestApiTests.Insert
                 @"
                     SELECT to_jsonb(subq) AS data
                     FROM (
-                        SELECT id, title 
+                        SELECT id, title
                         FROM " + _integrationTableName + @"
                         WHERE id = " + STARTING_ID_FOR_TEST_INSERTS + @"
                     ) AS subq
@@ -232,7 +232,7 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.RestApiTests.Insert
                 @"
                     SELECT to_jsonb(subq) AS data
                     FROM (
-                        SELECT id, title 
+                        SELECT id, title
                         FROM " + _integrationTableName + @"
                         WHERE id = " + STARTING_ID_FOR_TEST_INSERTS + @" AND 0 = 1
                     ) AS subq
@@ -246,6 +246,28 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.RestApiTests.Insert
                         SELECT *
                         FROM " + _defaultValueAsBuiltInMethodsTable + @"
                         WHERE id = " + STARTING_ID_FOR_TEST_INSERTS + @"
+                    ) AS subq
+                "
+            },
+            {
+                "InsertOneFailingDatabasePolicy",
+                @"
+                    SELECT to_jsonb(subq) AS data
+                    FROM (
+                        SELECT id, name
+                        FROM " + _foreignKeyTableName + @"
+                        WHERE name = 'New publisher'
+                    ) AS subq
+                "
+            },
+            {
+                "InsertOneInTableWithFieldsInDbPolicyNotPresentInBody",
+                @"
+                    SELECT to_jsonb(subq) AS data
+                    FROM (
+                        SELECT id, category, accessible_role
+                        FROM " + _tableWithSecurityPolicy + @"
+                        WHERE id = 18 AND category = 'book'
                     ) AS subq
                 "
             }
@@ -342,13 +364,49 @@ namespace Azure.DataApiBuilder.Service.Tests.SqlTests.RestApiTests.Insert
         [TestMethod]
         public override async Task InsertOneFailingDatabasePolicy()
         {
-            await base.InsertOneFailingDatabasePolicy();
+            string requestBody = @"
+            {
+                ""name"": ""New publisher""
+            }";
+
+            await SetupAndRunRestApiTest(
+                primaryKeyRoute: string.Empty,
+                queryString: string.Empty,
+                entityNameOrPath: _foreignKeyEntityName,
+                sqlQuery: GetQuery(nameof(InsertOneFailingDatabasePolicy)),
+                operationType: EntityActionOperation.Insert,
+                requestBody: requestBody,
+                exceptionExpected: true,
+                expectedStatusCode: HttpStatusCode.Forbidden,
+                expectedSubStatusCode: DataApiBuilderException.SubStatusCodes.DatabasePolicyFailure.ToString(),
+                expectedErrorMessage: "Could not insert row with given values.",
+                clientRoleHeader: "database_policy_tester"
+            );
         }
 
         [TestMethod]
         public override async Task InsertOneInTableWithFieldsInDbPolicyNotPresentInBody()
         {
-            await base.InsertOneInTableWithFieldsInDbPolicyNotPresentInBody();
+            string requestBody = @"
+            {
+                ""id"": 18,
+                ""category"":""book"",
+                ""accessible_role"": ""Anonymous""
+            }";
+
+            await SetupAndRunRestApiTest(
+                primaryKeyRoute: string.Empty,
+                queryString: string.Empty,
+                entityNameOrPath: _entityWithSecurityPolicy,
+                sqlQuery: GetQuery(nameof(InsertOneInTableWithFieldsInDbPolicyNotPresentInBody)),
+                operationType: EntityActionOperation.Insert,
+                exceptionExpected: true,
+                requestBody: requestBody,
+                clientRoleHeader: "database_policy_tester",
+                expectedErrorMessage: "One or more fields referenced by the database policy are not present in the request body.",
+                expectedStatusCode: HttpStatusCode.Forbidden,
+                expectedSubStatusCode: DataApiBuilderException.SubStatusCodes.AuthorizationCheckFailed.ToString()
+            );
         }
         #endregion
 
