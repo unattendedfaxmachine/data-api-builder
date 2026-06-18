@@ -47,7 +47,8 @@ public class RuntimeConfigValidator : IConfigValidator
     private static readonly HashSet<DatabaseType> _databaseTypesSupportingCreatePolicy =
     [
         DatabaseType.MSSQL,
-        DatabaseType.DWSQL
+        DatabaseType.DWSQL,
+        DatabaseType.PostgreSQL
     ];
 
     // Error messages for user-delegated authentication configuration.
@@ -1915,6 +1916,8 @@ public class RuntimeConfigValidator : IConfigValidator
     /// <param name="runtimeConfig">The runtime configuration.</param>
     public void ValidateEntityAndAutoentityConfigurations(RuntimeConfig runtimeConfig)
     {
+        ValidateCreatePolicySupport(runtimeConfig);
+
         if (runtimeConfig.IsDevelopmentMode())
         {
             ValidateEntityConfiguration(runtimeConfig);
@@ -1926,6 +1929,36 @@ public class RuntimeConfigValidator : IConfigValidator
 
             // Running only in developer mode to ensure fast and smooth startup in production.
             ValidatePermissionsInConfig(runtimeConfig);
+        }
+    }
+
+    /// <summary>
+    /// Validates create-operation database policy support across configured entities.
+    /// This validation is applied in all host modes to ensure unsupported database types
+    /// are consistently rejected.
+    /// </summary>
+    private void ValidateCreatePolicySupport(RuntimeConfig runtimeConfig)
+    {
+        foreach ((string entityName, Entity entity) in runtimeConfig.Entities)
+        {
+            DataSource entityDataSource = runtimeConfig.GetDataSourceFromEntityName(entityName);
+
+            foreach (EntityPermission permissionSetting in entity.Permissions)
+            {
+                foreach (EntityAction action in permissionSetting.Actions)
+                {
+                    if (action is not null &&
+                        !_databaseTypesSupportingCreatePolicy.Contains(entityDataSource.DatabaseType) &&
+                        !IsValidDatabasePolicyForAction(action))
+                    {
+                        HandleOrRecordException(new DataApiBuilderException(
+                            message: $"The Create action does not support defining a database policy." +
+                            $" entity:{entityName}, role:{permissionSetting.Role}, action:{action.Action}",
+                            statusCode: HttpStatusCode.ServiceUnavailable,
+                            subStatusCode: DataApiBuilderException.SubStatusCodes.ConfigValidationError));
+                    }
+                }
+            }
         }
     }
 }

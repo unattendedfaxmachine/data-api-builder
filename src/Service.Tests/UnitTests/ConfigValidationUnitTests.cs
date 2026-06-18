@@ -185,7 +185,7 @@ namespace Azure.DataApiBuilder.Service.Tests.UnitTests
         /// <param name="dbPolicy">Database policy.</param>
         /// <param name="errorExpected">Whether an error is expected.</param>
         [DataTestMethod]
-        [DataRow(DatabaseType.PostgreSQL, "1 eq @item.col1", true, DisplayName = "Database Policy defined for Create fails for PostgreSQL")]
+        [DataRow(DatabaseType.PostgreSQL, "1 eq @item.col1", false, DisplayName = "Database Policy defined for Create passes for PostgreSQL")]
         [DataRow(DatabaseType.PostgreSQL, null, false, DisplayName = "Database Policy set as null for Create passes on PostgreSQL.")]
         [DataRow(DatabaseType.PostgreSQL, "", false, DisplayName = "Database Policy left empty for Create passes for PostgreSQL.")]
         [DataRow(DatabaseType.PostgreSQL, " ", false, DisplayName = "Database Policy only whitespace for Create passes for PostgreSQL.")]
@@ -211,6 +211,46 @@ namespace Azure.DataApiBuilder.Service.Tests.UnitTests
             {
                 RuntimeConfigValidator configValidator = InitializeRuntimeConfigValidator();
                 configValidator.ValidatePermissionsInConfig(runtimeConfig);
+                Assert.IsFalse(errorExpected, message: "Validation expected to have failed.");
+            }
+            catch (DataApiBuilderException ex)
+            {
+                Assert.IsTrue(errorExpected, message: "Validation expected to have passed.");
+                Assert.AreEqual(HttpStatusCode.ServiceUnavailable, ex.StatusCode);
+                Assert.AreEqual(DataApiBuilderException.SubStatusCodes.ConfigValidationError, ex.SubStatusCode);
+            }
+        }
+
+        /// <summary>
+        /// Test that create-action database policy compatibility is validated consistently
+        /// across development and production host modes.
+        /// </summary>
+        [DataTestMethod]
+        [DataRow(DatabaseType.MySQL, HostMode.Development, true,
+            DisplayName = "MySQL create database policy fails in development mode")]
+        [DataRow(DatabaseType.MySQL, HostMode.Production, true,
+            DisplayName = "MySQL create database policy fails in production mode")]
+        [DataRow(DatabaseType.PostgreSQL, HostMode.Development, false,
+            DisplayName = "PostgreSQL create database policy passes in development mode")]
+        [DataRow(DatabaseType.PostgreSQL, HostMode.Production, false,
+            DisplayName = "PostgreSQL create database policy passes in production mode")]
+        public void AddDatabasePolicyToCreateOperation_HostModeParity(DatabaseType dbType, HostMode hostMode, bool errorExpected)
+        {
+            RuntimeConfig runtimeConfig = AuthorizationHelpers.InitRuntimeConfig(
+                entityName: AuthorizationHelpers.TEST_ENTITY,
+                roleName: AuthorizationHelpers.TEST_ROLE,
+                operation: EntityActionOperation.Create,
+                includedCols: new HashSet<string> { "col1", "col2", "col3" },
+                databasePolicy: "1 eq @item.col1",
+                dbType: dbType
+            );
+
+            runtimeConfig.Runtime.Host.Mode = hostMode;
+
+            try
+            {
+                RuntimeConfigValidator configValidator = InitializeRuntimeConfigValidator();
+                configValidator.ValidateEntityAndAutoentityConfigurations(runtimeConfig);
                 Assert.IsFalse(errorExpected, message: "Validation expected to have failed.");
             }
             catch (DataApiBuilderException ex)

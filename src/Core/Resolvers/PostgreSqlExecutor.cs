@@ -217,13 +217,5 @@ namespace Azure.DataApiBuilder.Core.Resolvers
             return _defaultAccessToken?.Token;
         }
 
-        /// <inheritdoc/>
-        public override void PopulateDbTypeForParameter(KeyValuePair<string, DbConnectionParam> parameterEntry, DbParameter parameter)
-        {
-            if (parameterEntry.Value?.DbType is not null)
-            {
-                parameter.DbType = (System.Data.DbType)parameterEntry.Value.DbType;
-            }
-        }
     }
 }
